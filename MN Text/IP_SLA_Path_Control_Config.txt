@@ -1,0 +1,105 @@
+Configure IP SLA Tracking and Path Control
+
+    		   +------------+                    +------------+
+                   |    R2      |--------------------|    R3      |
+                   |   ISP1     |  s3/1       s3/1   |   ISP2     |
+                   +-----+------+                    +-----+------+
+                         |                                 |
+                   s3/0  |                                 |  s3/0
+                         |                                 |
+                    +----+------------------------------------+
+                    |               R1 (Branch)               |
+                    |                AS 65000                 |
+                    +-----------------------------------------+
+                            s3/0                    s3/1
+
+========================
+R1 - Branch Router Config
+========================
+
+hostname R1
+no ip domain-lookup
+
+! Interface Configuration
+interface Serial3/0
+ ip address 10.0.12.1 255.255.255.0
+ clock rate 64000
+ no shutdown
+
+interface Serial3/1
+ ip address 10.0.13.1 255.255.255.0
+ clock rate 64000
+ no shutdown
+
+! IP SLA Configuration
+ip sla 1
+ icmp-echo 10.0.12.2 source-interface Serial3/0
+ frequency 10
+ip sla schedule 1 life forever start-time now
+
+! Track object for IP SLA
+track 1 ip sla 1 reachability
+
+! Static Routes with IP SLA Tracking
+ip route 0.0.0.0 0.0.0.0 10.0.12.2 track 1
+ip route 0.0.0.0 0.0.0.0 10.0.13.2 200
+
+========================
+R2 - ISP1 Router Config
+========================
+
+hostname R2
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.12.2 255.255.255.0
+ no shutdown
+
+interface Serial3/1
+ ip address 192.0.2.1 255.255.255.0
+ no shutdown
+
+ip route 0.0.0.0 0.0.0.0 Serial3/1
+
+========================
+R3 - ISP2 Router Config
+========================
+
+hostname R3
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.13.2 255.255.255.0
+ no shutdown
+
+interface Serial3/1
+ ip address 198.51.100.1 255.255.255.0
+ no shutdown
+
+ip route 0.0.0.0 0.0.0.0 Serial3/1
+
+========================
+Verification Commands on R1
+========================
+
+! Check IP SLA stats
+show ip sla statistics
+
+! Check track status
+show track
+
+! Check routing table
+show ip route
+
+! Confirm static routes with tracking
+show running-config | include ip route
+
+! Simulate link failure (on R2)
+! R2(config)# interface Serial3/0
+! R2(config-if)# shutdown
+
+! Restore link
+! R2(config-if)# no shutdown
+
+! Optional: Real-time tracking debug
+debug track

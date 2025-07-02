@@ -1,0 +1,96 @@
+INTER-VLAN ROUTING ON A LAYER 3 SWITCH
+======================================
+
+Objective:
+----------
+Allow PC0 and PC1 (in different VLANs) to communicate using a Layer 3 Switch (Multilayer Switch) via Inter-VLAN Routing.
+
+ 	  +-----------------------+
+          |  3560-24PS Switch0    |  ← (Layer 3 Switch)
+          +-----------------------+
+              |               |
+     Fa0/1    |               |   Fa0/2
+              |               |
+         +----+----+     +----+----+
+         |  PC0    |     |   PC1   |
+         | VLAN 10 |     | VLAN 20 |
+         +---------+     +---------+
+
+--------------------------------------
+PC CONFIGURATION:
+--------------------------------------
+
+PC0:
+    IP Address      : 192.168.10.2
+    Subnet Mask     : 255.255.255.0
+    Default Gateway : 192.168.10.1
+
+PC1:
+    IP Address      : 192.168.20.2
+    Subnet Mask     : 255.255.255.0
+    Default Gateway : 192.168.20.1
+
+--------------------------------------
+LAYER 3 SWITCH CONFIGURATION:
+--------------------------------------
+
+enable
+configure terminal
+
+! Create VLANs
+vlan 10
+name HR
+exit
+vlan 20
+name SALES
+exit
+
+! Assign ports to VLANs
+interface fastEthernet 0/1
+switchport mode access
+switchport access vlan 10
+exit
+
+interface fastEthernet 0/2
+switchport mode access
+switchport access vlan 20
+exit
+
+! Enable Routing on the Switch
+ip routing
+
+! Create SVI Interfaces for Inter-VLAN Routing
+interface vlan 10
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+exit
+
+interface vlan 20
+ip address 192.168.20.1 255.255.255.0
+no shutdown
+exit
+
+! (Optional) Set default gateway for switch management
+ip default-gateway 192.168.10.1
+
+end
+write memory
+
+--------------------------------------
+VERIFICATION COMMANDS:
+--------------------------------------
+
+From Switch:
+------------
+show ip interface brief
+show vlan brief
+ping 192.168.10.2
+ping 192.168.20.2
+
+From PC0 and PC1:
+-----------------
+ping 192.168.10.1
+ping 192.168.20.1
+ping between PC0 and PC1
+
+"""

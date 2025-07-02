@@ -1,0 +1,139 @@
+Configuring IBGP and EBGP Sessions, Local Preference and MED
+
+                   +----------------+
+                   |      R2        |
+                   |   SanJose1     |
+                   |   AS 65002     |
+                   +--+--------+----+
+                      |        |
+        s3/0 10.0.12.2|        |10.0.23.1 s3/1
+                      |        |
+        +-------------+        +-------------+
+        |                                      |
+s3/0 10.0.12.1                          10.0.23.2 s3/1
+   +-------------+                   +-------------+
+   |     R1      |-------------------|     R3      |
+   |     ISP     |   s3/1 10.0.13.1  |  SanJose2   |
+   |   AS 65001  |-------------------|   AS 65002  |
+   +-------------+  s3/0 10.0.13.2   +-------------+
+
+
+============================
+Topology AS Configuration:
+============================
+- R1 (ISP)         = AS 65001 (EBGP)
+- R2 (SanJose1)    = AS 65002 (IBGP)
+- R3 (SanJose2)    = AS 65002 (IBGP)
+
+============================
+R1 - ISP Router (AS 65001)
+============================
+
+hostname R1
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.12.1 255.255.255.0
+ clock rate 64000
+ no shutdown
+
+interface Serial3/1
+ ip address 10.0.13.1 255.255.255.0
+ clock rate 64000
+ no shutdown
+
+router bgp 65001
+ neighbor 10.0.12.2 remote-as 65002
+ neighbor 10.0.13.2 remote-as 65002
+
+! Advertise local network
+interface loopback0
+ ip address 1.1.1.1 255.255.255.0
+router bgp 65001
+ network 1.1.1.0 mask 255.255.255.0
+
+============================
+R2 - SanJose1 (AS 65002)
+============================
+
+hostname R2
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.12.2 255.255.255.0
+ no shutdown
+
+interface Serial3/1
+ ip address 10.0.23.1 255.255.255.0
+ no shutdown
+
+router bgp 65002
+ neighbor 10.0.12.1 remote-as 65001
+ neighbor 10.0.23.2 remote-as 65002
+ neighbor 10.0.13.1 remote-as 65001
+
+! Set higher LOCAL_PREF for R1 via R2
+route-map SET_LOCAL_PREF permit 10
+ set local-preference 200
+
+router bgp 65002
+ neighbor 10.0.12.1 route-map SET_LOCAL_PREF in
+
+! Advertise internal network
+interface loopback0
+ ip address 192.168.1.1 255.255.255.0
+router bgp 65002
+ network 192.168.1.0 mask 255.255.255.0
+
+============================
+R3 - SanJose2 (AS 65002)
+============================
+
+hostname R3
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.13.2 255.255.255.0
+ no shutdown
+
+interface Serial3/1
+ ip address 10.0.23.2 255.255.255.0
+ no shutdown
+
+router bgp 65002
+ neighbor 10.0.13.1 remote-as 65001
+ neighbor 10.0.23.1 remote-as 65002
+
+! Set lower MED value towards R1
+route-map SET_MED permit 10
+ set metric 50
+
+router bgp 65002
+ neighbor 10.0.13.1 route-map SET_MED out
+
+! Advertise internal network
+interface loopback0
+ ip address 192.168.2.1 255.255.255.0
+router bgp 65002
+ network 192.168.2.0 mask 255.255.255.0
+
+============================
+Verification Commands
+============================
+
+! Check BGP table
+show ip bgp
+
+! Check BGP summary
+show ip bgp summary
+
+! Check advertised/received routes
+show ip bgp neighbors <neighbor-ip> advertised-routes
+show ip bgp neighbors <neighbor-ip> received-routes
+
+! Check Local Preference and MED
+show ip bgp | include LocPrf
+show ip bgp | include metric
+
+! View route-map config
+show route-map

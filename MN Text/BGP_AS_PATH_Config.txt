@@ -1,0 +1,112 @@
+Using the AS_PATH Attribute
+ 			 +-------------+
+                        |     R2      |
+                        |     ISP     |
+                        |  AS 65020   |
+                        +------+------+ 
+                          s3/0 |   | s3/1
+                               |   |
+              s3/0           s3/0|   |s3/1           s3/1
+          +----------------+     |     +----------------+
+          |     R1         |     |     |       R3       |
+          |   (Rahul)      +-----+-----+    (CustRtr)    |
+          |  AS 65010      |           |    AS 65030     |
+          +----------------+           +-----------------+
+========================
+Topology Info:
+- R1 (Rahul) - AS 65001
+- R2 (ISP)   - AS 65002
+- R3 (CustRtr) - AS 65003
+========================
+
+========================
+R1 - Rahul Router Config (AS 65001)
+========================
+
+hostname R1
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.12.1 255.255.255.0
+ clock rate 64000
+ no shutdown
+
+router bgp 65001
+ neighbor 10.0.12.2 remote-as 65002
+ network 192.168.1.0 mask 255.255.255.0
+
+! Assume R1 has a local network
+interface loopback0
+ ip address 192.168.1.1 255.255.255.0
+
+========================
+R2 - ISP Router Config (AS 65002)
+========================
+
+hostname R2
+no ip domain-lookup
+
+interface Serial3/0
+ ip address 10.0.12.2 255.255.255.0
+ no shutdown
+
+interface Serial3/1
+ ip address 10.0.23.1 255.255.255.0
+ no shutdown
+
+router bgp 65002
+ neighbor 10.0.12.1 remote-as 65001
+ neighbor 10.0.23.2 remote-as 65003
+
+! Route-map to manipulate AS_PATH when advertising to R3
+ip as-path access-list 1 permit ^$
+route-map PREPEND permit 10
+ match ip address 1
+ set as-path prepend 65002 65002 65002
+
+! Apply route-map to R3 neighbor
+router bgp 65002
+ neighbor 10.0.23.2 route-map PREPEND out
+
+========================
+R3 - CustRtr Router Config (AS 65003)
+========================
+
+hostname R3
+no ip domain-lookup
+
+interface Serial3/1
+ ip address 10.0.23.2 255.255.255.0
+ no shutdown
+
+router bgp 65003
+ neighbor 10.0.23.1 remote-as 65002
+
+! Assume R3 has a local network
+interface loopback0
+ ip address 172.16.1.1 255.255.255.0
+router bgp 65003
+ network 172.16.1.0 mask 255.255.255.0
+
+========================
+Verification Commands (on All Routers)
+========================
+
+! Check BGP table
+show ip bgp
+
+! Check BGP neighbors
+show ip bgp summary
+
+! Check AS path info
+show ip bgp | include 65002
+
+! Check route-map applied (on R2)
+show route-map
+show ip as-path access-list
+
+========================
+Purpose of AS_PATH Prepend:
+========================
+R2 is prepending its AS number multiple times when advertising to R3
+to make that path less preferred, influencing incoming traffic path selection.

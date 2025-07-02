@@ -1,0 +1,81 @@
+# Define the MPLS topology configuration as a string
+mpls_topology_config = """
+MPLS Simulation Topology (R1 - R2 - R3)
+---------------------------------------------------
+           +---------+            +---------+             +---------+
+           |   R1    |------------|   R2    |-------------|   R3    |
+           | fa0/0   |            |fa0/0 f1/0|            | fa0/0   |
+           +---------+            +---------+             +---------+
+
+                ↖ MPLS Path Simulation ↗
+
+Device & Interfaces:
+---------------------
+- R1:
+    Interface: FastEthernet0/0
+    IP: 10.0.12.1/30
+    Connected to: R2 (Fa0/0)
+
+- R2:
+    Interface: FastEthernet0/0
+    IP: 10.0.12.2/30
+    Connected to: R1 (Fa0/0)
+
+    Interface: FastEthernet1/0
+    IP: 10.0.23.1/30
+    Connected to: R3 (Fa0/0)
+
+- R3:
+    Interface: FastEthernet0/0
+    IP: 10.0.23.2/30
+    Connected to: R2 (Fa1/0)
+
+
+Basic MPLS Configuration Steps:
+--------------------------------
+
+Step 1: Enable CEF and MPLS on all routers
+------------------------------------------
+conf t
+ ip cef
+ mpls ip
+end
+
+Step 2: Configure interfaces with IPs and enable MPLS
+------------------------------------------------------
+# On R1:
+interface FastEthernet0/0
+ ip address 10.0.12.1 255.255.255.252
+ mpls ip
+ no shutdown
+
+# On R2:
+interface FastEthernet0/0
+ ip address 10.0.12.2 255.255.255.252
+ mpls ip
+ no shutdown
+
+interface FastEthernet1/0
+ ip address 10.0.23.1 255.255.255.252
+ mpls ip
+ no shutdown
+
+# On R3:
+interface FastEthernet0/0
+ ip address 10.0.23.2 255.255.255.252
+ mpls ip
+ no shutdown
+
+Step 3: Configure Routing (use OSPF as example)
+-----------------------------------------------
+router ospf 1
+ network 10.0.12.0 0.0.0.3 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+
+# Apply on all routers accordingly.
+
+Step 4: Verify MPLS
+--------------------
+show mpls interfaces
+show mpls ldp neighbor
+show mpls forwarding-table

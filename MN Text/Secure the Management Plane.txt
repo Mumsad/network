@@ -1,0 +1,103 @@
+================== Secure the Management Plane ======================
+
+       R2
+      /  \
+     /    \
+   R1      R3
+
+====================== R1 Configuration ======================
+hostname R1
+interface s3/0
+ ip address 10.0.12.1 255.255.255.252
+ clock rate 64000
+ no shutdown
+
+! Secure the management plane
+enable secret cisco123
+service password-encryption
+
+ip domain-name r1.local
+crypto key generate rsa
+ 1024
+ip ssh version 2
+
+line console 0
+ password r1con123
+ login
+ exec-timeout 5 0
+
+line vty 0 4
+ password r1vty123
+ login
+ transport input ssh
+ access-class 10 in
+
+access-list 10 permit 10.0.12.0 0.0.0.3
+
+====================== R2 Configuration ======================
+hostname R2
+interface s3/0
+ ip address 10.0.12.2 255.255.255.252
+ no shutdown
+interface s3/1
+ ip address 10.0.23.1 255.255.255.252
+ clock rate 64000
+ no shutdown
+
+enable secret cisco123
+service password-encryption
+
+ip domain-name r2.local
+crypto key generate rsa
+ 1024
+ip ssh version 2
+
+line console 0
+ password r2con123
+ login
+ exec-timeout 5 0
+
+line vty 0 4
+ password r2vty123
+ login
+ transport input ssh
+ access-class 10 in
+
+access-list 10 permit 10.0.12.0 0.0.0.3
+access-list 10 permit 10.0.23.0 0.0.0.3
+
+====================== R3 Configuration ======================
+hostname R3
+interface s3/1
+ ip address 10.0.23.2 255.255.255.252
+ no shutdown
+
+enable secret cisco123
+service password-encryption
+
+ip domain-name r3.local
+crypto key generate rsa
+ 1024
+ip ssh version 2
+
+line console 0
+ password r3con123
+ login
+ exec-timeout 5 0
+
+line vty 0 4
+ password r3vty123
+ login
+ transport input ssh
+ access-class 10 in
+
+access-list 10 permit 10.0.23.0 0.0.0.3
+
+====================== Verification Commands ======================
+show ip ssh
+show run | sec line vty
+show access-lists
+show users
+"""
+
+
